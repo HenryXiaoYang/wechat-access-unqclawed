@@ -173,7 +173,7 @@ const tencentAccessPlugin = {
         }
 
         if (!code) {
-          runtime.log("[wechat-access] 未能从输入中提取 code，请重试");
+          runtime.log("[wechat-access] 未能从输入中提取 code。请只复制 code= 后面的值（到 & 之前），重新写入文件。");
           continue;
         }
 
@@ -220,31 +220,31 @@ const tencentAccessPlugin = {
         } catch { /* non-fatal */ }
 
         // 7. 设备绑定：生成企微客服链接，用户在微信中打开后才有对话入口
-        try {
-          const runtimeLog = {
-            info: (...args: unknown[]) => runtime.log(...args),
-            warn: (...args: unknown[]) => runtime.log(...args),
-            error: (...args: unknown[]) => runtime.log(...args),
-          };
-          const bindResult = await performDeviceBinding({
-            api,
-            log: runtimeLog,
-            showQr: async (url: string) => {
-              try {
-                const qrterm = await import("qrcode-terminal");
-                const generate = qrterm.default?.generate ?? qrterm.generate;
-                generate(url, { small: true }, (qrcode: string) => {
-                  runtime.log("\n" + qrcode);
-                });
-              } catch {
-                runtime.log("(qrcode-terminal 不可用)");
-              }
-            },
-          });
-          runtime.log(`[wechat-access] ${bindResult.message}`);
-        } catch (e) {
-          runtime.log(`[wechat-access] 设备绑定失败（非致命）: ${e instanceof Error ? e.message : String(e)}`);
+        const runtimeLog = {
+          info: (...args: unknown[]) => runtime.log(...args),
+          warn: (...args: unknown[]) => runtime.log(...args),
+          error: (...args: unknown[]) => runtime.log(...args),
+        };
+        const bindResult = await performDeviceBinding({
+          api,
+          log: runtimeLog,
+          showQr: async (url: string) => {
+            try {
+              const qrterm = await import("qrcode-terminal");
+              const generate = qrterm.default?.generate ?? qrterm.generate;
+              generate(url, { small: true }, (qrcode: string) => {
+                runtime.log("\n" + qrcode);
+              });
+            } catch {
+              runtime.log("(qrcode-terminal 不可用)");
+            }
+          },
+        });
+
+        if (!bindResult.success) {
+          throw new Error(`设备绑定失败: ${bindResult.message}。请重新登录重试。`);
         }
+        runtime.log(`[wechat-access] ${bindResult.message}`);
 
         // 写入 openclaw.json（统一存储）
         try {
@@ -590,8 +590,9 @@ const tencentAccessPlugin = {
           // 备份到独立文件（兜底）
           saveState({ jwtToken, channelToken, apiKey, guid, userInfo, savedAt: Date.now() }, authStatePath);
 
-          // 生成设备绑定链接（非致命）
+          // 生成设备绑定链接
           let bindUrl = "";
+          let bindError = "";
           try {
             const OPEN_KFID = "wkzLlJLAAAfbxEV3ZcS-lHZxkaKmpejQ";
             const linkResult = await api.generateContactLink(OPEN_KFID);
@@ -602,17 +603,27 @@ const tencentAccessPlugin = {
                 (nested(linkData, "data", "url") as string) ||
                 "";
             }
-          } catch { /* non-fatal */ }
+            if (!bindUrl) {
+              bindError = "生成设备绑定链接失败，请重新登录重试";
+            }
+          } catch (e) {
+            bindError = `生成设备绑定链接失败: ${e instanceof Error ? e.message : String(e)}`;
+          }
 
           pendingQrLogin = null;
           const nickname = (userInfo.nickname as string) ?? "用户";
-          const bindHint = bindUrl
-            ? `\n\n⚠️ 请在微信中打开以下链接完成设备绑定（绑定后才有对话入口）：\n${bindUrl}`
-            : "";
+
+          if (!bindUrl) {
+            return {
+              connected: false,
+              message: `登录成功但设备绑定失败: ${bindError}。请重新登录重试。`,
+            };
+          }
+
           return {
             connected: true,
-            bindUrl: bindUrl || undefined,
-            message: `登录成功! 欢迎 ${nickname}，请重启 Gateway 生效。${bindHint}`,
+            bindUrl,
+            message: `登录成功! 欢迎 ${nickname}，请在微信中打开以下链接完成设备绑定（绑定后才有对话入口）：\n${bindUrl}\n\n绑定完成后请重启 Gateway 生效。`,
           };
         }
 
