@@ -201,7 +201,8 @@ const tencentAccessPlugin = {
 
         // 写入 openclaw.json（统一存储）
         try {
-          const fullCfg = runtime.config?.loadConfig?.() ?? cfg;
+          const wRuntime = getWecomRuntime();
+          const fullCfg = wRuntime.config.loadConfig();
           const channels = { ...(fullCfg.channels ?? {}) } as Record<string, any>;
           channels["wechat-access-unqclawed"] = {
             ...(channels["wechat-access-unqclawed"] ?? {}),

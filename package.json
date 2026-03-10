@@ -1,6 +1,6 @@
 {
   "name": "@henryxiaoyang/wechat-access-unqclawed",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "type": "module",
   "description": "OpenClaw 微信通路插件 — 扫码登录 + AGP WebSocket 双向通信",
   "author": "HenryXiaoYang",
