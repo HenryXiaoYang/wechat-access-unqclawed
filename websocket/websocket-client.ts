@@ -293,6 +293,12 @@ export class WechatAccessWebSocketClient {
     if (this.config.token) {
       url.searchParams.set("token", this.config.token);
     }
+    if (this.config.guid) {
+      url.searchParams.set("guid", this.config.guid);
+    }
+    if (this.config.userId) {
+      url.searchParams.set("user_id", this.config.userId);
+    }
     return url.toString();
   };
 

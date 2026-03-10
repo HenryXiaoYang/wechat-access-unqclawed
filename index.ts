@@ -247,6 +247,8 @@ const tencentAccessPlugin = {
             ...(channels["wechat-access-unqclawed"] ?? {}),
             token: channelToken,
             wsUrl: env.wechatWsUrl,
+            guid,
+            userId: String(userInfo.user_id ?? ""),
           };
           const nextCfg: Record<string, unknown> = { ...fullCfg, channels };
           if (apiKey) {
@@ -379,11 +381,16 @@ const tencentAccessPlugin = {
         }
       }
 
+      // 从配置或已保存的登录态中获取 userId
+      const userId = tencentAccessConfig?.userId
+        ? String(tencentAccessConfig.userId)
+        : String((savedState?.userInfo as Record<string, unknown>)?.user_id ?? "");
+
       const wsConfig = {
         url: wsUrl,
         token,
         guid,
-        userId: "",
+        userId,
         gatewayPort,
         reconnectInterval: 3000,
         maxReconnectAttempts: 10,
@@ -558,6 +565,8 @@ const tencentAccessPlugin = {
             channels["wechat-access-unqclawed"] = {
               ...(channels["wechat-access-unqclawed"] ?? {}),
               token: channelToken,
+              guid,
+              userId: String(userInfo.user_id ?? ""),
             };
             const nextCfg: Record<string, unknown> = { ...fullCfg, channels };
             if (apiKey) {
